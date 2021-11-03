@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup as bs
 import requests
 import re
 import csv
-import pickle
 import io
 
 
@@ -88,7 +87,7 @@ class DataDownloader:
             region_no = self.regions[region]
         except KeyError as err:
             print(f"Region is not set correctly. {err} is not known region.")
-            exit(-1)
+            return -1 
 
         # Kontrola toho jestli jsou data pro zadaný kraj již dsaženy ve složce folder
         archive_names = self.get_actual_arch_names() 
@@ -126,8 +125,12 @@ class DataDownloader:
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
 
     def get_dict(self, regions=None):
-        pass
-
+        if regions == None or regions == []: 
+            print("not_list")
+            regions = self.regions.keys()
+        
+        
+        
 
 # TODO vypsat zakladni informace pri spusteni python3 download.py (ne pri importu modulu)
 
@@ -135,4 +138,6 @@ s = DataDownloader()
 
 #s.download_data()
 
-s.parse_region_data("JHM")
+#s.parse_region_data("JHM")
+
+s.get_dict(["asdf", "IRDD", "IEJ"])
