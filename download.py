@@ -10,7 +10,7 @@ import requests
 import re
 import csv
 import io
-
+import pickle
 
 import datetime
 
@@ -52,6 +52,7 @@ class DataDownloader:
         self.url = url
         self.folder = folder
         self.cache_filename = cache_filename
+        self.in_memory = dict.fromkeys(self.regions.keys())
     
     def get_actual_arch_names(self):
         # Get html page from url
@@ -123,14 +124,51 @@ class DataDownloader:
                     reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=str)
 
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
+        
+        return reg_dict
 
     def get_dict(self, regions=None):
+        #ret_dict = dict.fromkeys(self.headers + ["region"]) 
+        ret_dict = {} 
+        #print(ret_dict) 
+        #for header in self.headers + ["region"]:
+            #ret_dict[header] = np.empty(0)
+
+        #print(ret_dict) 
+
+        
         if regions == None or regions == []: 
-            print("not_list")
             regions = self.regions.keys()
-        
-        
-        
+
+        for region in regions:
+            print(region)
+            reg_cache_name = re.sub(r'\{\}', region, self.cache_filename)
+            act_dict = {}
+            
+            if self.in_memory[region] != None:
+                act_dict = self.in_memory[region]
+            elif os.path.exists(reg_cache_name):
+                with open(reg_cache_name, 'rb') as file:
+                    self.in_memory[region] = pickle.load(file)
+                    act_dict = self.in_memory[region]
+            else:
+                self.in_memory[region] = self.parse_region_data(region)
+                
+                with open(reg_cache_name, 'wb') as file:
+                    pickle.dump(self.in_memory[region], file)
+
+                act_dict = self.in_memory[region]
+
+            for header in self.headers + ["region"]:
+                if header not in ret_dict.keys():
+                    ret_dict[header] = act_dict[header]
+                else:
+                    ret_dict[header] = np.concatenate((ret_dict[header], act_dict[header]), axis=0)
+                
+            print(ret_dict)
+
+
+
 
 # TODO vypsat zakladni informace pri spusteni python3 download.py (ne pri importu modulu)
 
@@ -140,4 +178,5 @@ s = DataDownloader()
 
 #s.parse_region_data("JHM")
 
-s.get_dict(["asdf", "IRDD", "IEJ"])
+
+s.get_dict(["PHA", "STC"])
