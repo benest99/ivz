@@ -11,6 +11,7 @@ import re
 import csv
 import io
 import pickle
+import gzip
 
 import datetime
 
@@ -115,46 +116,39 @@ class DataDownloader:
                             mul_list[index].append(row[index])
 
         for index in range(len(mul_list)):
+        ####    print([self.headers[index]])
+        ####    if self.headers[index] == "p2a":
+        ####        reg_dict[self.headers[index]] =np.array(mul_list[index], dtype=datetime)
+        ####    else:
             try: 
                 reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=int)
             except ValueError:
-                try: 
-                    reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=float)
-                except ValueError:
-                    reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=str)
-
+                reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=str)
+        
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
         
         return reg_dict
 
     def get_dict(self, regions=None):
-        #ret_dict = dict.fromkeys(self.headers + ["region"]) 
         ret_dict = {} 
-        #print(ret_dict) 
-        #for header in self.headers + ["region"]:
-            #ret_dict[header] = np.empty(0)
-
-        #print(ret_dict) 
-
-        
+                
         if regions == None or regions == []: 
             regions = self.regions.keys()
 
         for region in regions:
-            print(region)
-            reg_cache_name = re.sub(r'\{\}', region, self.cache_filename)
+            reg_cache_name = re.sub(r'\{\}', region, self.folder +"/"+ self.cache_filename)
             act_dict = {}
             
             if self.in_memory[region] != None:
                 act_dict = self.in_memory[region]
             elif os.path.exists(reg_cache_name):
-                with open(reg_cache_name, 'rb') as file:
+                with gzip.open(reg_cache_name, 'rb') as file:
                     self.in_memory[region] = pickle.load(file)
                     act_dict = self.in_memory[region]
             else:
                 self.in_memory[region] = self.parse_region_data(region)
                 
-                with open(reg_cache_name, 'wb') as file:
+                with gzip.open(reg_cache_name, 'wb') as file:
                     pickle.dump(self.in_memory[region], file)
 
                 act_dict = self.in_memory[region]
@@ -165,18 +159,18 @@ class DataDownloader:
                 else:
                     ret_dict[header] = np.concatenate((ret_dict[header], act_dict[header]), axis=0)
                 
-            print(ret_dict)
-
+        return ret_dict
 
 
 
 # TODO vypsat zakladni informace pri spusteni python3 download.py (ne pri importu modulu)
+if __name__ == "__main__":
+    downloader = DataDownloader()
 
-s = DataDownloader()
+    #downloader.download_data()
 
-#s.download_data()
-
-#s.parse_region_data("JHM")
-
-
-s.get_dict(["PHA", "STC"])
+    dict_downloaded = downloader.get_dict([])
+    print("Byly stažený záznamy pro kraje: Středočeský, Liberecký, Zlínský")
+    print("Počet stažených záznamů:",len(dict_downloaded["p1"]))
+    for key in dict_downloaded:
+        print("Sloupec s datovým typem", dict_downloaded[key].dtype , " \ta klíčem",key)

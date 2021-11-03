@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 
 from download import DataDownloader
 
+imshow
 
+1. grag je logaritmický
 def plot_stat(data_source,
               fig_location=None,
               show_figure=False):
