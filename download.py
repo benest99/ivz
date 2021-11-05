@@ -13,7 +13,6 @@ import io
 import pickle
 import gzip
 
-import datetime
 
 # Kromě vestavěných knihoven (os, sys, re, requests …) byste si měli vystačit s: gzip, pickle, csv, zipfile, numpy, matplotlib, BeautifulSoup.
 # Další knihovny je možné použít po schválení opravujícím (např ve fóru WIS).
@@ -121,8 +120,8 @@ class DataDownloader:
         ####        reg_dict[self.headers[index]] =np.array(mul_list[index], dtype=datetime)
         ####    else:
             try: 
-                reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=int)
-            except ValueError:
+                reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=np.int64)
+            except:
                 reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=str)
         
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
@@ -161,15 +160,12 @@ class DataDownloader:
                 
         return ret_dict
 
-
-
-# TODO vypsat zakladni informace pri spusteni python3 download.py (ne pri importu modulu)
 if __name__ == "__main__":
     downloader = DataDownloader()
 
     #downloader.download_data()
 
-    dict_downloaded = downloader.get_dict([])
+    dict_downloaded = downloader.get_dict(["STC", "LBK", "ZLK"])
     print("Byly stažený záznamy pro kraje: Středočeský, Liberecký, Zlínský")
     print("Počet stažených záznamů:",len(dict_downloaded["p1"]))
     for key in dict_downloaded:
