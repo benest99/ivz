@@ -26,7 +26,7 @@ class DataDownloader:
         regions     Dictionary s nazvy kraju : nazev csv souboru
     """
 
-    types = ["str", np.int32, np.int32, "str", np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32,
+    types = ["str", np.int32, np.int32, np.datetime64, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32,
             np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, str, np.int32, np.int32, np.int32, np.int32, np.int32,
             np.int32, np.int32, np.int32, np.int32, np.int32, float, float, float, float, float, float, "str", "str", "str", "str", "str", "str", float, "str", "str",
             np.int32, np.int32, "str", np.int32]
@@ -177,9 +177,10 @@ class DataDownloader:
 if __name__ == "__main__":
     downloader = DataDownloader()
 
-    dict_downloaded = downloader.get_dict(["VYS"])
+    dict_downloaded = downloader.get_dict(["STC","LBK","ZLK"])
     print("Byly stažený záznamy pro kraje: Středočeský, Liberecký, Zlínský")
     print("Počet stažených záznamů:",len(dict_downloaded["p1"]))
     print("Jednotlivé sloupce ve formátu (label sloupce, datový typ):")
     for key in dict_downloaded:
         print("(",key,", ", dict_downloaded[key].dtype,")", sep="",end=",")
+    print('')
