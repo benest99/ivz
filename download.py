@@ -26,6 +26,11 @@ class DataDownloader:
         regions     Dictionary s nazvy kraju : nazev csv souboru
     """
 
+    types = ["str", np.int32, np.int32, "str", np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32,
+            np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, np.int32, str, np.int32, np.int32, np.int32, np.int32, np.int32,
+            np.int32, np.int32, np.int32, np.int32, np.int32, float, float, float, float, float, float, "str", "str", "str", "str", "str", "str", float, "str", "str",
+            np.int32, np.int32, "str", np.int32]
+
     headers = ["p1", "p36", "p37", "p2a", "weekday(p2a)", "p2b", "p6", "p7", "p8", "p9", "p10", "p11", "p12", "p13a",
                "p13b", "p13c", "p14", "p15", "p16", "p17", "p18", "p19", "p20", "p21", "p22", "p23", "p24", "p27", "p28",
                "p34", "p35", "p39", "p44", "p45a", "p47", "p48a", "p49", "p50a", "p50b", "p51", "p52", "p53", "p55a",
@@ -105,24 +110,31 @@ class DataDownloader:
 
         mul_list = [[]for rows in range(len(self.headers))] # List listů pro jednotlivé položny v .csv souborech 
         reg_dict = dict.fromkeys(self.headers+['region'])   # Výsledný slovník
-
+        
         for archive_name in archive_names:
             with zipfile.ZipFile(self.folder+"/"+os.path.basename(archive_name), 'r') as archive:
                 with archive.open(region_no+'.csv', 'r') as file:
                     reader = csv.reader(io.TextIOWrapper(file,'cp1250'), delimiter=';', quotechar='"')
                     for row in reader:
                         for index in range(len(row)):
-                            mul_list[index].append(row[index])
-
+                            if not row[index]:
+                                if self.types[index] == float:  
+                                    mul_list[index].append(np.nan)
+                                elif self.types[index] == np.int32:
+                                    mul_list[index].append(-1)
+                                else:
+                                    mul_list[index].append("")
+                            elif self.types[index] == float:
+                                new = row[index].replace(",",".")
+                                if not re.search("^[+-]?\d*\.\d+|\d+$", new):
+                                    mul_list[index].append(None)
+                                else:
+                                    mul_list[index].append(new)
+                            else: 
+                                mul_list[index].append(row[index])
+        
         for index in range(len(mul_list)):
-        ####    print([self.headers[index]])
-        ####    if self.headers[index] == "p2a":
-        ####        reg_dict[self.headers[index]] =np.array(mul_list[index], dtype=datetime)
-        ####    else:
-            try: 
-                reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=np.int64)
-            except:
-                reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=str)
+            reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=self.types[index])
         
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
         
@@ -160,13 +172,14 @@ class DataDownloader:
                 
         return ret_dict
 
+
+
 if __name__ == "__main__":
     downloader = DataDownloader()
 
-    #downloader.download_data()
-
-    dict_downloaded = downloader.get_dict(["STC", "LBK", "ZLK"])
+    dict_downloaded = downloader.get_dict(["VYS"])
     print("Byly stažený záznamy pro kraje: Středočeský, Liberecký, Zlínský")
     print("Počet stažených záznamů:",len(dict_downloaded["p1"]))
+    print("Jednotlivé sloupce ve formátu (label sloupce, datový typ):")
     for key in dict_downloaded:
-        print("Sloupec s datovým typem", dict_downloaded[key].dtype , " \ta klíčem",key)
+        print("(",key,", ", dict_downloaded[key].dtype,")", sep="",end=",")

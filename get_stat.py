@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 #from numpy.core.shape_base import vstack
 from matplotlib.colors import LogNorm
 from numpy.lib.arraysetops import unique
-
+import argparse
+import os
 # povolene jsou pouze zakladni knihovny (os, sys) a knihovny numpy, matplotlib a argparse
 
 from download import DataDownloader
@@ -36,7 +37,6 @@ def plot_stat(data_source,
         "VYS",
         "ZLK",
     ]
-    
     upravy = [
         "Přerušovaná žlutá",
         "Semafor mino provoz",
@@ -63,7 +63,7 @@ def plot_stat(data_source,
     absolute_values = np.roll(absolute_values, -1, axis=1)
     relative_values = absolute_values.T/absolute_values.T.sum(axis=1)[:,None]
     
-    absolute_values[absolute_values == 0.0] = np.nan 
+    #absolute_values[absolute_values == 0.0] = np.nan 
     relative_values[relative_values == 0.0] = np.nan
     
     fig, (axs1, axs2)= plt.subplots(2, figsize = (7.2, 5.5))
@@ -73,26 +73,36 @@ def plot_stat(data_source,
     fig.colorbar(graf1, ax = axs1, label="Počet nehod")
     axs1.set_title("Absolutně")
     
-    axs1.locator_params(axis='y', nbins=6)
-    axs1.locator_params(axis='x', nbins=14)
-    axs1.set_xticklabels(['']+regions, minor=False)
-    axs1.set_yticklabels(['']+upravy, minor=False)
+    axs1.set_yticks(range(len(upravy)))
+    axs1.set_xticks(range(len(regions)))
+    axs1.set_xticklabels(regions)
+    axs1.set_yticklabels(upravy)
    
 
-    lin_sp = np.linspace(0,100,6, endpoint=True)
-    graf2 = axs2.imshow(relative_values*100, cmap = plt.get_cmap("plasma"))
+    graf2 = axs2.imshow(relative_values*100, vmin = 0,cmap = plt.get_cmap("plasma"))
     fig.colorbar(graf2, ax = axs2, label="Políl nehod pro danou příčinu [%]")
     axs2.set_title("Relativně vůči příčině")
    
-    axs2.locator_params(axis='y', nbins=6)
-    axs2.locator_params(axis='x', nbins=14)
-    axs2.set_xticklabels(['']+regions, minor=False)
-    axs2.set_yticklabels(['']+upravy, minor=False)
-   
-    plt.show() 
+    axs2.set_yticks(range(len(upravy)))
+    axs2.set_xticks(range(len(regions)))
+    axs2.set_xticklabels(regions)
+    axs2.set_yticklabels(upravy)
 
-# TODO pri spusteni zpracovat argumenty
+    if show_figure:
+        plt.show() 
+
+    if fig_location:
+        dirname = os.path.dirname(fig_location) 
+        if not os.path.exists(dirname) and dirname != "":
+            os.path.makedirs(os.path.dirname(fig_location))
+        
+        plt.savefig(fig_location)
 
 if __name__ == "__main__":
 
-    plot_stat(data_source = DataDownloader().get_dict())
+    parser = argparse.ArgumentParser(description='Process some intefers')
+    parser.add_argument('--fig_location', type=str,  help='Cesta kam se mají uložit grafy. Pokud se tento argument nezadá, tak se grafy nikam neuloží.', default=None)
+    parser.add_argument('--show_figure', help='Zobrazí grafy v okně.', action='store_true')
+    args = parser.parse_args()
+
+    plot_stat(data_source = DataDownloader().get_dict(), fig_location=args.fig_location, show_figure=args.show_figure)
