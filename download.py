@@ -3,15 +3,14 @@
 from re import A, S
 import numpy as np
 import zipfile
-
 import os
-from bs4 import BeautifulSoup as bs
 import requests
 import re
 import csv
 import io
 import pickle
 import gzip
+from bs4 import BeautifulSoup as bs
 
 
 # Kromě vestavěných knihoven (os, sys, re, requests …) byste si měli vystačit s: gzip, pickle, csv, zipfile, numpy, matplotlib, BeautifulSoup.
@@ -19,10 +18,8 @@ import gzip
 
 
 class DataDownloader:
-    """ TODO: dokumentacni retezce 
-
-    Attributes:
-        headers    Nazvy hlavicek jednotlivych CSV souboru, tyto nazvy nemente!  
+    """ Attributes:
+        headers     Nazvy hlavicek jednotlivych CSV souboru, tyto nazvy nemente!  
         regions     Dictionary s nazvy kraju : nazev csv souboru
     """
 
@@ -54,12 +51,19 @@ class DataDownloader:
     }
 
     def __init__(self, url="https://ehw.fit.vutbr.cz/izv/", folder="data", cache_filename="data_{}.pkl.gz"):
+        """Inicializaton of the class
+        'url' - url to page from where the archives will be downloaded
+        'folder' - folder where to save the archives and cache files
+        'cache_filename - format of cache filename. This string must containt "{}" that will be replaced with region abbreviation.
+        """
         self.url = url
         self.folder = folder
         self.cache_filename = cache_filename
         self.in_memory = dict.fromkeys(self.regions.keys())
     
     def get_actual_arch_names(self):
+        """Returns list that contains name of newest archive for each year in the table"""
+        
         # Get html page from url
         page = bs(requests.get(self.url).text, 'html.parser')
 
@@ -67,6 +71,7 @@ class DataDownloader:
 
         names = []
 
+        # Iterates through cells in the row from the back and find first correct archive name
         for row in table_rows:
             items = row.findChildren('td')
             for item in reversed(items):
@@ -76,11 +81,27 @@ class DataDownloader:
 
         return names
 
+    def check_archives_integrity(self, archive_names, region_no):
+        """Returns true if there are all needed csv files. Return false if there missing some archives from archive_name argument or the csv file missing in the archive.""" 
+        for archive_name in archive_names:                                                                  
+            if(not os.path.isfile(self.folder+"/"+os.path.basename(archive_name))):                         
+                self.download_data()
+                return False 
+            else:                                                                                           
+                with zipfile.ZipFile(self.folder+"/"+os.path.basename(archive_name), 'r') as archive:
+                    if(region_no+'.csv' not in archive.namelist()):                                         
+                        self.download_data()
+                        return False 
+        return True
+
     def download_data(self):
+        """Downloads all most recent archive for each year from url given in the url property"""
+        
         # Make Folder if the folder do not exist 
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
+        # Downloads each archive from list that returns get_actual_arch_names()
         for name in self.get_actual_arch_names(): 
             req = requests.get(self.url+name, stream=True)
             with open(self.folder+"/"+os.path.basename(name),'wb') as file:
@@ -88,35 +109,29 @@ class DataDownloader:
                     file.write(chunk)
                 
     def parse_region_data(self, region):
-        # Získání čísla regionu z tříznakého kódu 
+        """Returns dictionary for specific region. The keys are the headers and key for region. The values are numpy arrays that contain data records for key."""
+        
         try:
             region_no = self.regions[region]
         except KeyError as err:
             print(f"Region is not set correctly. {err} is not known region.")
             return -1 
 
-        # Kontrola toho jestli jsou data pro zadaný kraj již dsaženy ve složce folder
         archive_names = self.get_actual_arch_names() 
-        for archive_name in archive_names:                                                                  # Stáhnou se aktuální jména nejnovějších archivů pro každý rok
-            if(not os.path.isfile(self.folder+"/"+os.path.basename(archive_name))):                         # Pokud některý z archivů neexistuje, tak se stáhne aktuální
-                self.download_data()
-                break
-            else:                                                                                           # Pokud archiv existuje, tak se zjistí jestli je .csv soubor pro region stažen
-                with zipfile.ZipFile(self.folder+"/"+os.path.basename(archive_name), 'r') as archive:
-                    if(region_no+'.csv' not in archive.namelist()):                                         # Archivy se znovu stáhnou pokud v některém z nich chybí .scv soubor pro region
-                        self.download_data()
-                        break
-
-
-        mul_list = [[]for rows in range(len(self.headers))] # List listů pro jednotlivé položny v .csv souborech 
-        reg_dict = dict.fromkeys(self.headers+['region'])   # Výsledný slovník
+        mul_list = [[]for rows in range(len(self.headers))] 
+        
+        # Final dictionary  
+        reg_dict = dict.fromkeys(self.headers+['region'])   
         
         for archive_name in archive_names:
+            # Open archive in directory that is given in folder attribute 
             with zipfile.ZipFile(self.folder+"/"+os.path.basename(archive_name), 'r') as archive:
-                with archive.open(region_no+'.csv', 'r') as file:
+                # Open csv file in the archive
+                with archive.open(region_no+'.csv', 'r') as file: 
                     reader = csv.reader(io.TextIOWrapper(file,'cp1250'), delimiter=';', quotechar='"')
                     for row in reader:
                         for index in range(len(row)):
+                            # Adjusting the data based on the value readed and the estimated cell type
                             if not row[index]:
                                 if self.types[index] == float:  
                                     mul_list[index].append(np.nan)
@@ -132,45 +147,56 @@ class DataDownloader:
                                     mul_list[index].append(new)
                             else: 
                                 mul_list[index].append(row[index])
-        
+
+        # Assign new numpy arrays to the dictionary. Assign new numpy arrays to the dictionary. Type of coresponding array is given in predefined list of types. 
         for index in range(len(mul_list)):
             reg_dict[self.headers[index]] = np.array(mul_list[index], dtype=self.types[index])
-        
+
+        # Create numpy array that containt region abbreviation. Length of this array is given by count of records.
         reg_dict['region'] = (np.array([region for _ in range(len(mul_list[0]))]))
         
         return reg_dict
 
     def get_dict(self, regions=None):
-        ret_dict = {} 
-                
+        """Returns merged dictionaries for regions specified in parameter regions."""
+        final_dict = {} 
+
+        # Sets regions to all regions if the argument was not set or a empty list was specified 
         if regions == None or regions == []: 
             regions = self.regions.keys()
 
         for region in regions:
             reg_cache_name = re.sub(r'\{\}', region, self.folder +"/"+ self.cache_filename)
             act_dict = {}
-            
+
+            # Data in memory cach  
             if self.in_memory[region] != None:
                 act_dict = self.in_memory[region]
+            # Data in cach file 
             elif os.path.exists(reg_cache_name):
                 with gzip.open(reg_cache_name, 'rb') as file:
+                    # Store data in memory
                     self.in_memory[region] = pickle.load(file)
                     act_dict = self.in_memory[region]
+            # Data are not processed 
             else:
+                # Store data in memory
                 self.in_memory[region] = self.parse_region_data(region)
-                
+
+                # Store data in file 
                 with gzip.open(reg_cache_name, 'wb') as file:
                     pickle.dump(self.in_memory[region], file)
 
                 act_dict = self.in_memory[region]
 
+            # Merge new dictionary
             for header in self.headers + ["region"]:
-                if header not in ret_dict.keys():
-                    ret_dict[header] = act_dict[header]
+                if header not in final_dict.keys():
+                    final_dict[header] = act_dict[header]
                 else:
-                    ret_dict[header] = np.concatenate((ret_dict[header], act_dict[header]), axis=0)
+                    final_dict[header] = np.concatenate((final_dict[header], act_dict[header]), axis=0)
                 
-        return ret_dict
+        return final_dict
 
 
 

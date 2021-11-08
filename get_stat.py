@@ -3,21 +3,21 @@
 #from os import register_at_fork
 import numpy as np
 import matplotlib.pyplot as plt
-#from numpy.core.shape_base import vstack
 from matplotlib.colors import LogNorm
 from numpy.lib.arraysetops import unique
 import argparse
 import os
-# povolene jsou pouze zakladni knihovny (os, sys) a knihovny numpy, matplotlib a argparse
 
 from download import DataDownloader
 
-#imshow
+# povolene jsou pouze zakladni knihovny (os, sys) a knihovny numpy, matplotlib a argparse
 
-#1. grag je logaritmický
-def plot_stat(data_source,
-              fig_location=None,
-              show_figure=False):
+def plot_stat(data_source, fig_location=None, show_figure=False):
+    """Visualises data in graphs
+    'data_source' - Dictionary of numpy arrays. Each numpy array represent records for its key.
+    'fig_location' - Location where to save graphs. Nothing will be saved if the given value is None.
+    'show_figure' - Show visualised data if its value is set to True. 
+    """
 
     absolute_values = None 
     
@@ -49,8 +49,9 @@ def plot_stat(data_source,
 
     for region in regions:
         final = np.zeros(6, dtype=np.float64) 
-
-        unique_for_reg = np.unique(data_source["p24"][np.where(data_source["region"] == region)], return_counts=True)
+        i_for_current_reg = np.where(data_source["region"] == region)
+        p24_values =  data_source["p24"][i_for_current_reg]
+        unique_for_reg = np.unique(p24_values, return_counts=True)
         
         for index in range(len(unique_for_reg[0])):
             final[unique_for_reg[0][index]] = unique_for_reg[1][index]
@@ -63,7 +64,6 @@ def plot_stat(data_source,
     absolute_values = np.roll(absolute_values, -1, axis=1)
     relative_values = absolute_values.T/absolute_values.T.sum(axis=1)[:,None]
     
-    #absolute_values[absolute_values == 0.0] = np.nan 
     relative_values[relative_values == 0.0] = np.nan
     
     fig, (axs1, axs2)= plt.subplots(2, figsize = (7.2, 5.5))
