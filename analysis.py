@@ -33,7 +33,7 @@ types = { "p5a":"category", "p6":"category", "p7":"category", "p8":"category", "
         "p58":"category", "t":"category", "s":"category", "r":"category","p":"category",
         "q":"category","n":"category","l":"category",
         }
-
+type_of_df = {"t":"category", "q":"category","p":"category","o":"category","n":"category","l":"category","k":"category","i":"category","h":"category"}
 
 
 def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
@@ -44,11 +44,9 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
         memory_usage = df.memory_usage(index=False, deep=True).sum()
         print("orig_size=" + str(round(memory_usage/MB_SIZE, 1))+" MB") 
     
-    dates = pd.to_datetime(df["p2a"])
-    df["date"] = dates
-    
-    df = df.astype(types)
-    
+    df["date"] = pd.to_datetime(df["p2a"])
+    df = df.astype(type_of_df)
+
     if(verbose):
         memory_usage = df.memory_usage(index=False, deep=True).sum()
         print("new_size=" + str(round(memory_usage/MB_SIZE, 1))+" MB") 
@@ -110,13 +108,21 @@ def plot_conditions(df: pd.DataFrame, fig_location: str = None,
     df["date"] = pd.DatetimeIndex(df["date"]).to_period("M")
     df["Počet nehod"] = 0 
     
-    neco = pd.pivot_table(df, index=["date","region"], values="Počet nehod", columns=[ "p18"], aggfunc=len, fill_value=0)
-    neco = neco.stack(level="p18").reset_index(name="Počet nehod")
+    df = pd.pivot_table(df, index=["date","region"], values="Počet nehod", columns=[ "p18"], aggfunc=len, fill_value=0)
+    df = df.stack(level="p18").reset_index(name="Počet nehod")
 
-    neco = neco.astype({"date":"str", "region":"category", "p18":"category"})
+    df = df.astype({"date":"str", "region":"category", "p18":"category"})
 
-    g= sns.relplot(x="date", y="Počet nehod", col="region", hue="p18", kind="line", col_wrap=2, data=neco) 
-    
+    g= sns.relplot(x="date", y="Počet nehod", col="region", hue="p18", kind="line", col_wrap=2, data=df) 
+
+    header_name = ["1/16","1/17","1/18","1/19","1/20", "1/21"]
+    x_tick_interval = 12
+    value_tick = range(0,6*12, x_tick_interval)
+
+    for ax in g.axes.flat:
+        ax.set_xticks(ticks=value_tick)
+        ax.set_xticklabels(labels=header_name) 
+        
     if(fig_location != None):
         g.fig.savefig(fig_location)
 
@@ -128,7 +134,7 @@ if __name__ == "__main__":
     # zde je ukazka pouziti, tuto cast muzete modifikovat podle libosti
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce.
-    df = get_dataframe("accidents.pkl.gz",False) # tento soubor si stahnete sami, při testování pro hodnocení bude existovat
-    plot_roadtype(df, fig_location="data/01_roadtype.png", show_figure=True)
-    plot_animals(df, "02_animals.png", True)
+    df = get_dataframe("accidents.pkl.gz",True) # tento soubor si stahnete sami, při testování pro hodnocení bude existovat
+    #plot_roadtype(df, fig_location="data/01_roadtype.png", show_figure=True)
+    #plot_animals(df, "02_animals.png", True)
     plot_conditions(df, "03_conditions.png", True)
