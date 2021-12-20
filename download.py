@@ -60,6 +60,12 @@ class DataDownloader:
         self.folder = folder
         self.cache_filename = cache_filename
         self.in_memory = dict.fromkeys(self.regions.keys())
+
+        # Make Folder if the folder do not exist 
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
+
     
     def get_actual_arch_names(self):
         """Returns list that contains name of newest archive for each year in the table"""
@@ -85,22 +91,16 @@ class DataDownloader:
         """Returns true if there are all needed csv files. Return false if there missing some archives from archive_name argument or the csv file missing in the archive.""" 
         for archive_name in archive_names:                                                                  
             if(not os.path.isfile(self.folder+"/"+os.path.basename(archive_name))):                         
-                self.download_data()
                 return False 
             else:                                                                                           
                 with zipfile.ZipFile(self.folder+"/"+os.path.basename(archive_name), 'r') as archive:
                     if(region_no+'.csv' not in archive.namelist()):                                         
-                        self.download_data()
                         return False 
         return True
 
     def download_data(self):
         """Downloads all most recent archive for each year from url given in the url property"""
         
-        # Make Folder if the folder do not exist 
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
-
         # Downloads each archive from list that returns get_actual_arch_names()
         for name in self.get_actual_arch_names(): 
             req = requests.get(self.url+name, stream=True)
@@ -119,7 +119,10 @@ class DataDownloader:
 
         archive_names = self.get_actual_arch_names() 
         mul_list = [[]for rows in range(len(self.headers))] 
-        
+
+        if(not self.check_archives_integrity(archive_names, region_no)):
+            self.download_data()
+
         # Final dictionary  
         reg_dict = dict.fromkeys(self.headers+['region'])   
         

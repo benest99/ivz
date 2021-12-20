@@ -23,20 +23,13 @@ new_size=X MB
 Poznámka: zobrazujte na 1 desetinné místo (.1f) a počítejte, že 1 MB = 1e6 B. 
 """
 
-types = { "p5a":"category", "p6":"category", "p7":"category", "p8":"category", "p9":"category", 
-        "p10":"category", "p11":"category", "p12":"category", "p15":"category", "p16":"category",
-        "p17":"category", "p18":"category", "p19":"category", "p20":"category", "p21":"category", "p22":"category",
-        "p23":"category", "p24":"category", "p27":"category", "p28":"category",
-        "p36":"category", "p39":"category",
-        "p44":"category", "p45a":"category", "p48a":"category", "p49":"category",
-        "p50a":"category", "p50b":"category", "p51":"category", "p55a":"category", "p57":"category",
-        "p58":"category", "t":"category", "s":"category", "r":"category","p":"category",
-        "q":"category","n":"category","l":"category",
-        }
 type_of_df = {"t":"category", "q":"category","p":"category","o":"category","n":"category","l":"category","k":"category","i":"category","h":"category"}
 
 
 def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
+    """Gets data from file thet name is given in 'filename'.
+    Print the size of dataframe in MB before and after adjustment if 'verbose' is True.
+    """
     df = pd.read_pickle(filename)
     MB_SIZE=1048576
 
@@ -55,56 +48,112 @@ def get_dataframe(filename: str, verbose: bool = False) -> pd.DataFrame:
 
 # Ukol 2: počty nehod v jednotlivých regionech podle druhu silnic
 
-def plot_roadtype(df: pd.DataFrame, fig_location: str = None,
-                  show_figure: bool = False):
-    df.p21 = df.p21.map({1: "Dvouproudová komunikace", 2:"Tříproudová komunikace", 3:"Čtyřproudová kominikace", 4:"Čtyřproudová kominikace", 5:"Víceproudová komunikace", 6:"Rychlostní komunikace", 0:"Jiná komunikace"})
+def plot_roadtype(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """Make graph from data given in 'df' dataframe.
+    This graph shows Accidents by type of communication.
+    Graph will be saved to file at 'fig_location'. If 'fig_location' is None then nothing will be saved.
+    Graph will be plotted if the 'show_figure' is True.
+    """
+    # Data sorting and filtration
     df = df[df["region"].isin(["VYS", "OLK", "MSK", "KVK"])]
     
+    df.p21 = df.p21.map({1: "Dvouproudová komunikace", 2:"Tříproudová komunikace", 3:"Čtyřproudová kominikace", 4:"Čtyřproudová kominikace", 5:"Víceproudová komunikace", 6:"Rychlostní komunikace", 0:"Jiná komunikace"})
     df = df.groupby(["p21", "region"]).size().reset_index(name="Počet nehod")
 
-    g = sns.catplot(x="region", y="Počet nehod", col="p21", kind="bar", data=df, col_wrap=3, sharex=False, sharey=False,  col_order=["Dvouproudová komunikace", "Tříproudová komunikace", "Čtyřproudová kominikace", "Rychlostní komunikace", "Víceproudová komunikace", "Jiná komunikace"]) 
-    g.fig.set_size_inches(15,8) 
-    g.fig.subplots_adjust(top=0.9, bottom=0.1, wspace=0.3, hspace=0.3)
+    df.region = df.region.map({"KVK": "Karlovarský", "VYS": "Kraj Vysočina", "OLK": "Olomoucký", "MSK": "Moravskoslezský"})
+
+    # Graph plotting
+    sns.set_style("darkgrid") 
+    g = sns.catplot(
+        x="region",
+        y="Počet nehod",
+        col="p21",
+        kind="bar",
+        palette="deep",
+        data=df,
+        color="bright",
+        sharex=False,
+        sharey=False,
+        col_wrap=3,
+        col_order=["Dvouproudová komunikace", "Tříproudová komunikace", "Čtyřproudová kominikace", "Rychlostní komunikace", "Víceproudová komunikace", "Jiná komunikace"]
+        ) 
+    g.fig.subplots_adjust(top=0.9, bottom=0.1, wspace=0.3, hspace=0.5)
     g.set(xlabel="Kraj")
+    g.set_xticklabels(rotation=30)
     g.set_titles(template="{col_name}")
+
     g.fig.suptitle("Nehody podle druhu komunikace")
 
+    # Save file 
     if(fig_location != None):
         g.fig.savefig(fig_location)
 
+    # Show figure
     if(show_figure):
         plt.show()
 
 # Ukol3: zavinění zvěří
-def plot_animals(df: pd.DataFrame, fig_location: str = None,
-                 show_figure: bool = False):
-    df.p10 = df.p10.map({1: "řidičem", 2:"řidičem", 3:"jiné", 4:"zvěří", 5:"jiné", 6:"jiné", 7:"jiné", 0:"jiné"})
-    #df = df[df["region"].isin(["VYS", "OLK", "MSK", "KVK"])]
-    df = df[df["region"].isin(["JHM", "KVK", "VYS", "ZLK"])]
+def plot_animals(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """Make graph from data given in 'df' dataframe.
+    This graph shows accidents caused by game.
+    Graph will be saved to file at 'fig_location'. If 'fig_location' is None then nothing will be saved.
+    Graph will be plotted if the 'show_figure' is True.
+    """
+    # Data sorting and filtration
     df = df[df["p58"] == 5]
+    df = df[df["region"].isin(["JHM", "KVK", "VYS", "ZLK"])]
+
+    df.p10 = df.p10.map({1: "řidičem", 2:"řidičem", 3:"jiné", 4:"zvěří", 5:"jiné", 6:"jiné", 7:"jiné", 0:"jiné"})
+    df.region = df.region.map({"JHM": "Jihomoravský", "KVK": "Karlovarský", "VYS": "Kraj Vysočina", "ZLK": "Zlínský"})
 
     df = df[pd.DatetimeIndex(df["date"]).year != 2021]
     df["date"] = pd.DatetimeIndex(df["date"]).month 
 
-    print(df)
-
-    g= sns.catplot(x="date", col="region", hue="p10", kind="count",data=df, col_wrap=2, sharex=False, sharey=False) 
-
+    # Graph plotting
+    sns.set_style("darkgrid") 
+    g= sns.catplot(
+        x="date",
+        col="region",
+        hue="p10",
+        kind="count",
+        palette="deep",
+        data=df,
+        col_wrap=2,
+        sharex=False,
+        sharey=False
+        ) 
+    
+    g.set(ylabel="Počet nehod", xlabel="Měsíc") 
+    g.fig.subplots_adjust(top=0.9, bottom=0.1, wspace=0.3, hspace=0.3)
+    g._legend.set_title("Zavinění") 
+    
+    g.set_titles(template="Kraj: {col_name}")
+    
+    g.fig.suptitle("Nehody zaviněné zvěří")
+    
+    # Save file 
     if(fig_location != None):
         g.fig.savefig(fig_location)
 
+    # Show figure
     if(show_figure):
         plt.show()
 
    
 # Ukol 4: Povětrnostní podmínky
-def plot_conditions(df: pd.DataFrame, fig_location: str = None,
-                    show_figure: bool = False):
-    df = df[df["region"].isin(["JHM", "KVK", "VYS", "ZLK"])]
+def plot_conditions(df: pd.DataFrame, fig_location: str = None, show_figure: bool = False):
+    """Make graph from data given in 'df' dataframe.
+    This graph shows the number of accidents according to weather conditions.
+    Graph will be saved to file at 'fig_location'. If 'fig_location' is None then nothing will be saved.
+    Graph will be plotted if the 'show_figure' is True.
+    """
+    # Data sorting and filtration
     df = df[df["p18"] != 0]
+    df = df[df["region"].isin(["JHM", "KVK", "VYS", "ZLK"])]
     df = df[pd.DatetimeIndex(df["date"]).year != 2021]
-    df.p18 = df.p18.map({1: "neztížené", 2:"mlha", 3:"na počátku deště, slabý déšť, mrholení apod.", 4:"déšť", 5:"sněžení", 6:"tvoří se námraza, náledí", 7:"nárazový vítr"})
 
+    df.p18 = df.p18.map({1: "neztížené", 2:"mlha", 3:"na počátku deště, slabý déšť, mrholení apod.", 4:"déšť", 5:"sněžení", 6:"tvoří se námraza, náledí", 7:"nárazový vítr"})
+    df.region = df.region.map({"JHM": "Jihomoravský", "KVK": "Karlovarský", "VYS": "Kraj Vysočina", "ZLK": "Zlínský"})
     df["date"] = pd.DatetimeIndex(df["date"]).to_period("M")
     df["Počet nehod"] = 0 
     
@@ -113,19 +162,39 @@ def plot_conditions(df: pd.DataFrame, fig_location: str = None,
 
     df = df.astype({"date":"str", "region":"category", "p18":"category"})
 
-    g= sns.relplot(x="date", y="Počet nehod", col="region", hue="p18", kind="line", col_wrap=2, data=df) 
+    # Graph plotting
+    sns.set_style("darkgrid") 
+    g= sns.relplot(
+        x="date",
+        y="Počet nehod",
+        col="region",
+        hue="p18",
+        kind="line",
+        palette="deep",
+        col_wrap=2,
+        data=df,
+        facet_kws={'sharex':False, 'sharey': True}
+        ) 
+    g.set(xlabel=None) 
+    g.fig.subplots_adjust(top=0.9, bottom=0.1, wspace=0.3, hspace=0.3)
+    g._legend.set_title("Podmínky") 
+    g.set_titles(template="Kraj: {col_name}")
 
+    g.fig.suptitle("Počty nehod podle povětrnostních podmínek")
+
+    # Set labels for all x axes 
     header_name = ["1/16","1/17","1/18","1/19","1/20", "1/21"]
     x_tick_interval = 12
     value_tick = range(0,6*12, x_tick_interval)
-
     for ax in g.axes.flat:
         ax.set_xticks(ticks=value_tick)
         ax.set_xticklabels(labels=header_name) 
-        
+
+    # Save file 
     if(fig_location != None):
         g.fig.savefig(fig_location)
 
+    # Show figure
     if(show_figure):
         plt.show()
 
@@ -135,6 +204,6 @@ if __name__ == "__main__":
     # skript nebude pri testovani pousten primo, ale budou volany konkreni ¨
     # funkce.
     df = get_dataframe("accidents.pkl.gz",True) # tento soubor si stahnete sami, při testování pro hodnocení bude existovat
-    #plot_roadtype(df, fig_location="data/01_roadtype.png", show_figure=True)
-    #plot_animals(df, "02_animals.png", True)
-    plot_conditions(df, "03_conditions.png", True)
+    plot_roadtype(df, fig_location="01_roadtype.png", show_figure=False)
+    plot_animals(df, "02_animals.png", False)
+    plot_conditions(df, "03_conditions.png", False)
